@@ -36,7 +36,7 @@ function finishWork() {
   process.exit(0);
 }
 
-process.on('SIGINT', () => {
+rl.on('SIGINT', () => {
   finishWork();
 });
 
