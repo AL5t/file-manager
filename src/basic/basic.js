@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
+import { pipeline } from 'node:stream/promises';
 
 async function cmdCat(cwd, filePath) {
   if(!cwd || !filePath) {
@@ -113,17 +114,20 @@ async function cmdCp(cwd, filePath, pathToNewDir) {
   try {
     const fullFilePath = path.resolve(cwd, filePath);
     const fullPathToNewDir = path.resolve(cwd, pathToNewDir);
-    const statFile = await fs.promises.stat(fullFilePath);
-    const statDir = await fs.promises.stat(fullPathToNewDir);
+    const statFile = await fs.promises.stat(fullFilePath).catch(() => false);
+    const statDir = await fs.promises.stat(fullPathToNewDir).catch(() => false);
+    const pathDir = path.join(fullPathToNewDir, path.basename(fullFilePath));
 
     if(!statFile?.isFile || !statDir?.isDirectory) {
-      console.log('Operation failed');
+      console.log('Invalid input');
       return;
     }
 
     const readStream = fs.createReadStream(fullFilePath);
-    const writeStream = fs.createWriteStream(fullPathToNewDir);
+    const writeStream = fs.createWriteStream(pathDir);
 
+    readStream.on('error', () => console.log('Operation failed'));
+    writeStream.on('error', () => console.log('Operation failed'));
     readStream.pipe(writeStream);
   } catch (error) {
     console.log('Operation failed');
@@ -139,19 +143,23 @@ async function cmdMv(cwd, filePath, pathToNewDir) {
   try {
     const fullFilePath = path.resolve(cwd, filePath);
     const fullPathToNewDir = path.resolve(cwd, pathToNewDir);
-    const statFile = await fs.promises.stat(fullFilePath);
-    const statDir = await fs.promises.stat(fullPathToNewDir);
+    const statFile = await fs.promises.stat(fullFilePath).catch(() => false);
+    const statDir = await fs.promises.stat(fullPathToNewDir).catch(() => false);
+    const pathDir = path.join(fullPathToNewDir, path.basename(fullFilePath));
 
     if(!statFile?.isFile || !statDir?.isDirectory) {
-      console.log('Operation failed');
+      console.log('Invalid input');
       return;
     }
 
     const readStream = fs.createReadStream(fullFilePath);
-    const writeStream = fs.createWriteStream(fullPathToNewDir);
+    const writeStream = fs.createWriteStream(pathDir);
 
-    readStream.pipe(writeStream);
-    fs.unlink(fullFilePath);
+    readStream.on('error', () => console.log('Operation failed'));
+    writeStream.on('error', () => console.log('Operation failed'));
+
+    await pipeline(readStream, writeStream);
+    await fs.promises.unlink(fullFilePath);
   } catch (error) {
     console.log('Operation failed');
   }
@@ -165,14 +173,14 @@ async function cmdRm(cwd, filePath) {
 
   try {
     const fullFilePath = path.resolve(cwd, filePath);
-    const statFile = await fs.promises.stat(fullFilePath);
+    const statFile = await fs.promises.stat(fullFilePath).catch(() => false);
 
     if(!statFile?.isFile) {
-      console.log('Operation failed');
+      console.log('Invalid input');
       return;
     }
 
-    fs.unlink(fullFilePath);
+    await fs.promises.unlink(fullFilePath);
   } catch (error) {
     console.log('Operation failed');
   }

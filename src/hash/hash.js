@@ -11,9 +11,9 @@ export async function calculateHash(cwd, filePath) {
 
   try {
     const fullFilePath = path.resolve(cwd, filePath);
-    const stat = await fs.promises.stat(fullFilePath);
+    const stat = await fs.promises.stat(fullFilePath).catch(() => false);
     if(!stat?.isFile) {
-      console.log('Operation failed');
+      console.log('Invalid input');
       return;
     }
 
