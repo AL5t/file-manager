@@ -1,9 +1,12 @@
 import * as readline from 'node:readline';
 import path from 'node:path';
-import fs from 'node:fs'
+import fs from 'node:fs';
 import os from 'node:os';
+import { cmdCat, cmdAdd, cmdMkdir, cdmRn, cmdCp, cmdMv, cmdRm } from './basic/basic.js'
 import { calculateHash } from './hash/hash.js';
-import { getOsInfo } from './os/os.js'
+import { getOsInfo } from './os/os.js';
+import { compress } from './compress/compress.js';
+import { decompress } from './compress/decompress.js';
 
 const args = process.argv.slice(2);
 let username = null;
@@ -74,16 +77,20 @@ async function cmdCd(pathDirectory) {
     return;
   }
 
-  const resolved = path.join(cwd, pathDirectory);
-  const stats = await fs.promises.stat(resolved);
+  try {
+    const resolved = path.join(cwd, pathDirectory);
+    const stats = await fs.promises.stat(resolved);
 
-  if(!stats.isDirectory() || !checkPathInRoot(resolved)) {
+    if(!stats.isDirectory() || !checkPathInRoot(resolved)) {
+      console.log('Operation failed');
+      return;
+    }
+
+    cwd = resolved;
+    printCwd();
+  } catch (error) {
     console.log('Operation failed');
-    return;
   }
-
-  cwd = resolved;
-  printCwd();
 }
 
 async function cmdLs() {
@@ -96,47 +103,6 @@ async function cmdLs() {
   }  
 }
 
-async function cmdCat(pathDirectory) {
-  if(!pathDirectory) {
-    console.log('Invalid input');
-    return;
-  }
-
-  const resolved = path.resolve(cwd, pathDirectory);
-  const stat = await fs.promises.stat(resolved);
-
-  if(stat.isFile) {
-    const stream = fs.createReadStream(resolved);
-    stream.on('data', (chunk) => {
-      process.stdout.write(chunk);
-    });
-  }
-}
-
-async function cmdAdd(fileName) {
-  if(!fileName) {
-    console.log('Invalid input');
-    return;
-  }
-
-  const resolved = path.resolve(cwd, fileName);
-
-  const stream = fs.createWriteStream(resolved);
-
-  process.stdin.on('data', (chunk) => {
-    stream.write(chunk);
-  });
-}
-
-async function cmdMkdir(dirName) {
-  if(!fileName) {
-    console.log('Invalid input');
-    return;
-  }
-
-  const resolved = path.resolve(cwd, dirName);
-  await fs.promises.mkdir(resolved);
-}
 
 async function handleLine(line) {
   const trimmedLine = line.trim();
@@ -166,19 +132,37 @@ async function handleLine(line) {
       }
       break;
     case 'cat':
-      await cmdCat(arrayOfValues[1]);
+      await cmdCat(cwd, arrayOfValues[1]);
       break;
     case 'add':
-      await cmdAdd(arrayOfValues[1]);
+      await cmdAdd(cwd, arrayOfValues[1]);
       break;
     case 'mkdir':
-      await cmdMkdir(arrayOfValues[1]);
+      await cmdMkdir(cwd, arrayOfValues[1]);
+      break;
+    case 'rn':
+      await cdmRn(cwd, arrayOfValues[1], arrayOfValues[2]);
+      break;
+    case 'cp':
+      await cmdCp(cwd, arrayOfValues[1], arrayOfValues[2]);
+      break;
+    case 'mv':
+      await cmdMv(cwd, arrayOfValues[1], arrayOfValues[2]);
+      break;
+    case 'rm':
+      await cmdRm(cwd, arrayOfValues[1]);
       break;
     case 'hash':
-      await calculateHash(arrayOfValues[1]);
+      await calculateHash(cwd, arrayOfValues[1]);
       break;
     case 'os':
       await getOsInfo(arrayOfValues[1]);
+      break;
+    case 'compress':
+      await compress(cwd, arrayOfValues[1], arrayOfValues[2]);
+      break;
+    case 'decompress':
+      await decompress(cwd, arrayOfValues[1], arrayOfValues[2]);
       break;
     default:
       console.log('Invalid input');

@@ -1,21 +1,24 @@
 import { createReadStream } from 'node:fs';
-import fs from 'node:fs'
+import fs from 'node:fs';
+import path from 'node:path';
 const { createHash } = await import('node:crypto');
 
-export async function calculateHash(filePath) {
+export async function calculateHash(cwd, filePath) {
+  if(!cwd || !filePath) {
+    console.log('Invalid input');
+    return;
+  }
+
   try {
-    if(!filePath) {
-      console.log('Invalid input');
+    const fullFilePath = path.resolve(cwd, filePath);
+    const stat = await fs.promises.stat(fullFilePath);
+    if(!stat?.isFile) {
+      console.log('Operation failed');
       return;
     }
 
-    const stat = await fs.promises.stat(filePath);
-    if(!stat?.isFile) {
-      throw new Error('Operation failed');
-    }
-
     const hash = createHash('sha256');
-    const input = createReadStream(filePath);
+    const input = createReadStream(fullFilePath);
 
     input.on('readable', () => {
       const data = input.read();
