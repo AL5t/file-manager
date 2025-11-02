@@ -9,13 +9,19 @@ async function cmdCat(cwd, filePath) {
 
   try {
     const fullFilePath = path.resolve(cwd, filePath);
-    const stat = await fs.promises.stat(fullFilePath);
+    const stat = await fs.promises.stat(fullFilePath).catch(() => false);
 
-    if(stat.isFile) {
+    if(stat?.isFile) {
       const stream = fs.createReadStream(fullFilePath, {encoding: 'utf8'});
       stream.on('data', (chunk) => {
         process.stdout.write(chunk);
       });
+      stream.on('end', () => {
+        console.log('\n');
+        console.log(`You are currently in ${cwd}`);
+      });
+    } else {
+      console.log('Invalid input. Such file does not exist');
     }
   } catch (error) {
     console.log('Operation failed');
@@ -30,6 +36,13 @@ async function cmdAdd(cwd, fileName) {
 
   try {
     const fullFilePath = path.resolve(cwd, fileName);
+    const stat = await fs.promises.stat(fullFilePath).catch(() => false);
+    
+    if(stat?.isFile) {
+      console.log(`Invalid input. A file "${fileName}" already exists.`);
+      return;
+    }
+
     const stream = fs.createWriteStream(fullFilePath);
 
     process.stdin.on('data', (chunk) => {
@@ -41,14 +54,21 @@ async function cmdAdd(cwd, fileName) {
 }
 
 async function cmdMkdir(cwd, dirName) {
-  if(!cwd || !fileName) {
+  if(!cwd || !dirName) {
     console.log('Invalid input');
     return;
   }
 
   try {
     const dirPath = path.resolve(cwd, dirName);
-    await fs.promises.mkdir(dirPath);
+    const stat = await fs.promises.stat(dirPath).catch(() => false);
+    
+    if(stat?.isDirectory) {
+      console.log(`Invalid input. A directory "${dirName}" already exists.`);
+      return;
+    }
+
+    await fs.promises.mkdir(dirPath, {recursive: true});
   } catch (error) {
     console.log('Operation failed');
   }
@@ -61,17 +81,23 @@ async function cdmRn(cwd, filePath, newFileName) {
   }
 
   try {
+    const fullFilePath = path.resolve(cwd, filePath);
     const pathNewFileName = path.resolve(cwd, newFileName);
-
-    await fs.promises.access(filePath, fs.promises.constants.F_OK);
-
-    const isNewFileNameExist = await fs.promises.access(pathNewFileName, fs.promises.constants.F_OK).then(() => true).catch(() => false);
-    if(isNewFileNameExist) {
-      console.log(`Operation failed. A file named "${newFileName}" already exists.`);
+    const statFile = await fs.promises.stat(fullFilePath).catch(() => false);
+    
+    if(!statFile?.isFile) {
+      console.log(`Invalid input. File ${filePath} does not exist`);
       return;
     }
 
-    fs.promises.rename(filePath, pathNewFileName);
+    const statNewFileName = await fs.promises.stat(pathNewFileName).catch(() => false);
+    
+    if(statNewFileName?.isFile) {
+      console.log(`Invalid input. A file named "${newFileName}" already exists.`);
+      return;
+    }
+
+    await fs.promises.rename(fullFilePath, pathNewFileName);
     
   } catch (error) {
     console.log('Operation failed');
