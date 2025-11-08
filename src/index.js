@@ -7,6 +7,7 @@ import { calculateHash } from './hash/hash.js';
 import { getOsInfo } from './os/os.js';
 import { compress } from './compress/compress.js';
 import { decompress } from './compress/decompress.js';
+import { cmdLs } from './list/list.js';
 
 const args = process.argv.slice(2);
 let username = null;
@@ -92,38 +93,6 @@ async function cmdCd(pathDirectory) {
   }
 }
 
-async function cmdLs() {
-  try {
-    const names = await fs.promises.readdir(cwd);
-    const list = [];
-
-    for (const name of names) {
-      const full = path.join(cwd, name);
-      const stat = await fs.promises.stat(full);
-      list.push({name, isDirectory: stat.isDirectory(), isFile: stat.isFile()});
-    }
-
-    list.sort((a, b) => {
-      if(a.isDirectory && !b.isDirectory) {
-        return -1;
-      }
-      if(!a.isDirectory && b.isDirectory) {
-        return 1;
-      }
-      return a.name.toLocaleLowerCase().localeCompare(b.name.toLocaleLowerCase());
-    });
-
-    console.log('Type        |   Name');
-    console.log('--------------------');
-    for (const item of list) {
-      console.log(`${item.isDirectory ? 'directory' : 'file     '}   |   ${item.name}`);
-    }
-    console.log('--------------------');
-  } catch (error) {
-    console.log('Operation failed');
-  }
-}
-
 
 async function handleLine(line) {
   try {
@@ -148,7 +117,7 @@ async function handleLine(line) {
         break;
       case 'ls':
         if (arrayOfValues.length === 1) {
-          await cmdLs();
+          await cmdLs(cwd);
         } else {
           console.log('Invalid input');
         }
